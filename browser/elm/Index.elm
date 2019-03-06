@@ -20,19 +20,32 @@ main =
 
 type alias Model =
     { sansanApiKey : String
-    , cardsJson : String
+    , from : String
+    , to : String
+    , cardCount : Maybe Int
+    , errorText : Maybe String
     }
 
 
 init : () -> ( Model, Cmd Msg )
 init _ =
-    ( { sansanApiKey = "", cardsJson = "" }, Cmd.none )
+    ( { sansanApiKey = ""
+      , from = "2019-04-01"
+      , to = "2020-04-01"
+      , cardCount = Nothing
+      , errorText = Nothing
+      }
+    , Cmd.none
+    )
 
 
 type Msg
     = SansanApiKeyChange String
-    | GetCards
-    | CardsJsonChange String
+    | GetCardCount
+    | CardCountChange Int
+    | FromChange String
+    | ToChange String
+    | ErrorOccurred Http.Error
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -41,21 +54,30 @@ update msg model =
         SansanApiKeyChange v ->
             ( { model | sansanApiKey = v }, Cmd.none )
 
-        GetCards ->
+        FromChange s ->
+            ( { model | from = s }, Cmd.none )
+
+        ToChange s ->
+            ( { model | to = s }, Cmd.none )
+
+        GetCardCount ->
             ( model
-            , Api.getCards model.sansanApiKey
+            , Api.getCardCount model.sansanApiKey { updatedFrom = model.from, updatedTo = model.to }
                 (\res ->
                     case res of
-                        Ok s ->
-                            CardsJsonChange s
+                        Ok c ->
+                            CardCountChange c
 
                         Err err ->
-                            CardsJsonChange <| errorText err
+                            ErrorOccurred err
                 )
             )
 
-        CardsJsonChange j ->
-            ( { model | cardsJson = j }, Cmd.none )
+        CardCountChange c ->
+            ( { model | cardCount = Just c }, Cmd.none )
+
+        ErrorOccurred err ->
+            ( { model | errorText = Just <| errorText err }, Cmd.none )
 
 
 subscriptions : Model -> Sub Msg
@@ -68,13 +90,38 @@ view model =
     { title = "Sansan名刺カウンタ"
     , body =
         [ h1 [] [ span [] [ text "Sansan名刺カウンタ" ] ]
-        , p [] [ text "SansanからAPIキーを発行して貼り付けて下さい。" ]
-        , div []
-            [ input [ class "form-control", onInput SansanApiKeyChange ] []
-            , button [ onClick GetCards ] [ text "名刺情報取得" ]
+        , div [ class "container" ]
+            [ p [] [ text "SansanからAPIキーを発行して貼り付けて下さい。" ]
+            , input
+                [ class "form-control"
+                , placeholder "SansanのAPIキー"
+                , onInput SansanApiKeyChange
+                ]
+                []
+            , input [ type_ "date", class "form-control updated-from", value model.from, onInput FromChange ] []
+            , span [] [ text "〜" ]
+            , input [ type_ "date", class "form-control updated-to", value model.to, onInput ToChange ] []
+            , hr_
+            , button [ class "btn btn-primary", onClick GetCardCount ] [ text "名刺の枚数を取得" ]
+            , hr_
+            , label [] [ text "名刺の数" ]
+            , case model.cardCount of
+                Nothing ->
+                    p [] [ text "まだ情報を取得していません" ]
+
+                Just c ->
+                    input [ value <| String.fromInt c ] []
+            , hr_
+            , label [] [ text "エラー状況" ]
+            , p [] [ text <| Maybe.withDefault "エラーはありません" model.errorText ]
             ]
         ]
     }
+
+
+hr_ : Html msg
+hr_ =
+    hr [] []
 
 
 

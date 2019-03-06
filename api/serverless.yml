@@ -20,10 +20,17 @@ provider:
 #    - "arn:aws:s3:::tegaki-image/*"
 
 functions:
-  getCards:
-    handler: handler.getCards
+  getCardCount:
+    handler: handler.getCardCount
     events:
     - http:
         method: get
-        path: card/index
-        cors: false
+        path: card/count
+        cors: true
+  optionsCardCount:
+    handler: handler.options
+    events:
+    - http:
+        method: options
+        path: card/count
+        cors: true

@@ -12,11 +12,11 @@ export const HttpReturnCode = {
   NOT_FOUND: 404,
 }
 
-export type Headers = { string: string }
+export type Headers = { [header: string]: boolean | number | string }
 export type Body = any
 
 export type ResultDecorator = {
-  general: (HttpReturnCode, Body?, Headers?) => APIGatewayProxyResult,
+  general: (number, Body?, Headers?) => APIGatewayProxyResult,
   ok: (Body, Headers?) => APIGatewayProxyResult,
   created: (Body, Headers?) => APIGatewayProxyResult,
   noContent: (Headers?) => APIGatewayProxyResult,
@@ -30,10 +30,11 @@ export function newResultDecorator(allowOrigin: string): ResultDecorator {
     }
     result.headers['Access-Control-Allow-Origin'] = allowOrigin
     result.headers['Access-Control-Allow-Credentials'] = true
-    result.headers['Access-Control-Allow-Headers'] = 'Content-Type'
+    result.headers['Access-Control-Allow-Headers'] = 'Content-Type, x-sansan-api-key'
+    result.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, HEAD, OPTIONS'
     return result
   }
-  const general = (statusCode, body, headers) => core({
+  const general = (statusCode: number, body: Body, headers: Headers) => core({
     statusCode,
     headers,
     body: JSON.stringify(body),
@@ -43,6 +44,6 @@ export function newResultDecorator(allowOrigin: string): ResultDecorator {
     ok: (body, headers) => general(HttpReturnCode.OK, body, headers),
     created: (body, headers) => general(HttpReturnCode.CREATED, body, headers),
     noContent: (headers) => general(HttpReturnCode.NO_CONTENT, null, headers),
-    options: async () => general(HttpReturnCode.OK, null, null)
+    options: async () => general(HttpReturnCode.OK, null, {})
   }
 }
